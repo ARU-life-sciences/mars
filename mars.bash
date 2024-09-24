@@ -1,12 +1,9 @@
-#!/bin/bash
+## mars, max's restricted shell ##
 
 # Some points
 # - never add `cd` to the restricted PATH, as it can be used to escape
 #   the restricted environment. We add a custom function below.
 # - you will have to add your own binaries to the restricted bin directory
-
-
-## mars, max's restricted shell ##
 
 # print usage
 usage() {
@@ -14,7 +11,7 @@ usage() {
     echo ""
     echo "Usage: $0 [-p <RESTRICTED_PATH>] [-b <BASH_PATH>] [-h]" 
     echo "Options:"
-    echo "  -p               Path to the restricted bin directory."
+    echo "  -p               Path to the restricted directory."
     echo "  -b <BASH_PATH>   Specify the BASH executable path."
     echo "  -h               Display this help message."
     echo ""
@@ -33,11 +30,11 @@ cp /bin/echo /home/user/restricted/bin/
 # add a command line option to specify $HOME/restricted/bin location
 # if not specified, use the default location (bin)
 # also add a BASH path, so we know which BASH to use
-while getopts ":pb:h" opt; do
+while getopts ":p:b:h" opt; do
     case ${opt} in
         # Set the restricted directory based on the user's input
         p)
-            RESTRICTED_PATH="$HOME/$OPTARG"
+            RESTRICTED_PATH="$OPTARG"
             ;;
         b)
             # If -b is passed, store the provided path in bash_path
@@ -48,9 +45,16 @@ while getopts ":pb:h" opt; do
             usage
             exit 1
             ;;
+        :)
+            echo "Option -$OPTARG requires an argument." 1>&2
+            echo ""
+            usage
+            exit 1
+            ;;
         # Handle invalid options
         \? )
             echo "Invalid option: $OPTARG" 1>&2
+            echo ""
             usage
             exit 1
             ;;
@@ -60,49 +64,32 @@ done
 # After parsing options, shift positional parameters
 shift $((OPTIND -1))
 
-# Set the base restricted directory (where the user is jailed)
-RESTRICTED_DIR="$HOME/restricted"
-export RESTRICTED_DIR
-
-# if RESTRICTED_PATH was never set, use the default value
-if [ -z "$RESTRICTED_PATH" ]; then
-    RESTRICTED_PATH="$RESTRICTED_DIR/bin"
+# if no restricted path is set, default to $HOME/restricted
+if [ ! -n "$RESTRICTED_PATH" ]; then
+    RESTRICTED_PATH="$HOME/restricted"
+    DEFAULT_RESTRICTED_MESSAGE="Defaulting to $RESTRICTED_PATH"
 fi
 
+# Set the base restricted directory (where the user is jailed)
+RESTRICTED_DIR=$RESTRICTED_PATH
+# export RESTRICTED_DIR
+
+RESTRICTED_BIN_PATH="$RESTRICTED_DIR/bin"
 
 # Check if the BASH_PATH variable has been set
 if [ ! -n "$BASH_PATH" ]; then
     BASH_PATH="/bin/bash"
-    echo "Defaulting to $BASH_PATH"
+    DEFAULT_BASH_MESSAGE="Defaulting to $BASH_PATH"
 fi
 
 # Define the restricted PATH, where only specific commands are allowed
-PATH="$RESTRICTED_PATH"
+PATH="$RESTRICTED_BIN_PATH"
 export PATH
 
 # Set a restricted prompt to indicate limited functionality
 PS1="mars> "
 # and export it for the shell to use
 export PS1
-
-# Function to check if user tries to cd outside the allowed directory
-cd() {
-    # If no argument to cd, change to RESTRICTED_DIR
-    if [ -z "$1" ]; then
-        builtin cd "$RESTRICTED_DIR"
-        return
-    fi
-    
-    # Get the absolute path of the target directory
-    TARGET_DIR=$(realpath -m "$1")
-    
-    # Check if the target directory is within the restricted directory
-    if [[ "$TARGET_DIR" == "$RESTRICTED_DIR"* ]]; then
-        builtin cd "$TARGET_DIR"
-    else
-        echo "Access denied: You cannot leave $RESTRICTED_DIR"
-    fi
-}
 
 # Additional restrictions (optional)
 # Disable environment modifications to avoid escaping restrictions
@@ -118,6 +105,7 @@ unset BASH_ENV
 
 # add a welcome message
 echo "Welcome to Mars, the restricted shell."
+echo "$DEFAULT_BASH_MESSAGE"
+echo "Restricted directory: $RESTRICTED_DIR"
 
-# Start the restricted bash shell without profiles
-exec $BASH_PATH --noprofile --norc
+exec "$BASH_PATH" --noprofile --norc --restricted
