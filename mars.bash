@@ -8,23 +8,50 @@
 
 ## mars, max's restricted shell ##
 
+# print usage
+usage() {
+    echo "mars: Max's restricted shell"
+    echo ""
+    echo "Usage: $0 [-p <RESTRICTED_PATH>] [-b <BASH_PATH>] [-h]" 
+    echo "Options:"
+    echo "  -p               Path to the restricted bin directory."
+    echo "  -b <BASH_PATH>   Specify the BASH executable path."
+    echo "  -h               Display this help message."
+    echo ""
+    echo "For Mac's only. Not tested on Linux."
+    echo ""
+    echo ""
+    echo "Add your own binaries to the restricted dir, for example:"
+    echo ""
+    echo "mkdir -p /home/user/restricted/bin
+cp /bin/ls /home/user/restricted/bin/
+cp /bin/echo /home/user/restricted/bin/
+"
+    exit 0
+}
+
 # add a command line option to specify $HOME/restricted/bin location
 # if not specified, use the default location (bin)
 # also add a BASH path, so we know which BASH to use
-while getopts ":pb:" opt; do
+while getopts ":pb:h" opt; do
     case ${opt} in
         # Set the restricted directory based on the user's input
-        p )
+        p)
             RESTRICTED_PATH="$HOME/$OPTARG"
             ;;
         b)
             # If -b is passed, store the provided path in bash_path
             BASH_PATH="$OPTARG"
             ;;
+        # Display usage
+        h)
+            usage
+            exit 1
+            ;;
         # Handle invalid options
         \? )
             echo "Invalid option: $OPTARG" 1>&2
-            echo "Usage: $0 [-p path to restricted bin directory]" 1>&2
+            usage
             exit 1
             ;;
     esac
